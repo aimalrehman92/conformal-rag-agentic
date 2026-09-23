@@ -538,6 +538,7 @@ def main():
         truncation_strategy=truncation_strategy,
         truncate_by=truncate_by,
         multi_hop_config=retrieval_config["multi_hop"],
+        agentic_config=retrieval_config["agentic"],
     )
 
     # generate subclaims with scores

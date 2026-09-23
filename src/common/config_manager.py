@@ -88,6 +88,8 @@ class ConfigManager:
 
         models_config = config.get("models", {})
         retrieval_config = config.get("retrieval", {})
+        agentic_config = retrieval_config.get("agentic", {})
+        agentic_policy_config = agentic_config.get("policy", {})
         conformal_config = config.get("conformal", {})
 
         conformal_implementation = conformal_config.get(
@@ -263,6 +265,49 @@ class ConfigManager:
                         )
                         .get("query_rewriter", {})
                         .get(
+                            "max_chars_per_document",
+                            1200,
+                        ),
+                    },
+                },
+                "agentic": {
+                    "max_steps": agentic_config.get(
+                        "max_steps",
+                        3,
+                    ),
+                    "max_retrievals": agentic_config.get(
+                        "max_retrievals",
+                        3,
+                    ),
+                    "initial_retrieval": agentic_config.get(
+                        "initial_retrieval",
+                        True,
+                    ),
+                    "stop_if_no_new_documents": agentic_config.get(
+                        "stop_if_no_new_documents",
+                        False,
+                    ),
+                    "policy": {
+                        "provider": agentic_policy_config.get(
+                            "provider",
+                            generator_config.get(
+                                "provider",
+                                self._infer_provider(generator_model),
+                            ),
+                        ),
+                        "model": agentic_policy_config.get(
+                            "model",
+                            generator_model,
+                        ),
+                        "temperature": agentic_policy_config.get(
+                            "temperature",
+                            0.0,
+                        ),
+                        "max_documents": agentic_policy_config.get(
+                            "max_documents",
+                            5,
+                        ),
+                        "max_chars_per_document": agentic_policy_config.get(
                             "max_chars_per_document",
                             1200,
                         ),
