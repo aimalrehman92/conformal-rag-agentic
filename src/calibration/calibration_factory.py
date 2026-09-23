@@ -23,6 +23,7 @@ from src.calibration.conformal import SplitConformalCalibration
 
 SUPPORTED_CONFORMAL_IMPLEMENTATIONS = {
     "author",
+    "legacy",
     "aimal",
 }
 
@@ -51,7 +52,7 @@ def create_split_conformal_calibration(
     """
     _validate_implementation(implementation)
 
-    if implementation == "author":
+    if implementation in {"author", "legacy"}:
         return AuthorSplitConformalCalibration(
             dataset_name=dataset_name,
             runs=runs,
@@ -78,7 +79,7 @@ def create_group_conditional_calibration(
     """
     _validate_implementation(implementation)
 
-    if implementation == "author":
+    if implementation in {"author", "legacy"}:
         return AuthorGroupConditionalConformal(
             dataset_name=dataset_name,
             result_dir=result_dir,

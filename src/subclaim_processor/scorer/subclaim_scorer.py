@@ -9,6 +9,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 from src.common.faiss_manager import FAISSIndexManager
 from src.common.embedding_provider import EmbeddingProvider
 from src.subclaim_processor.scorer.document_scorer import IDocumentScorer
+from src.subclaim_processor.scorer.r1_evidence_entailment import (
+    DEFAULT_R1_NLI_BATCH_SIZE,
+    DEFAULT_R1_NLI_MAX_LENGTH,
+    DEFAULT_R1_NLI_MODEL,
+    R1EvidenceEntailmentScorer,
+)
 from src.subclaim_processor.strategies.aggregation import (
     AggregationStrategy,
     MaxAggregation,
@@ -28,6 +34,11 @@ SCORING_STRATEGIES: Dict[str, Callable] = {
     "product": ProductScoreStrategy,
 }
 
+SUPPORTED_SCORING_STRATEGIES = {
+    *SCORING_STRATEGIES.keys(),
+    "r1",
+}
+
 
 class SubclaimScorer(IDocumentScorer):
     def __init__(
@@ -39,6 +50,9 @@ class SubclaimScorer(IDocumentScorer):
         indice2fm_path="index_store/indice2fm.json",
         frequency_provider="openai",
         embedding_provider: Optional[EmbeddingProvider] = None,
+        relevance_model: str = DEFAULT_R1_NLI_MODEL,
+        relevance_max_length: int = DEFAULT_R1_NLI_MAX_LENGTH,
+        relevance_batch_size: int = DEFAULT_R1_NLI_BATCH_SIZE,
     ):
         self.embedding_model = embedding_model
         self.frequency_model = frequency_model
@@ -54,6 +68,11 @@ class SubclaimScorer(IDocumentScorer):
                 f"{frequency_provider!r}. Supported providers are: "
                 "['huggingface', 'openai']."
             )
+
+        self.relevance_model = relevance_model
+        self.relevance_max_length = relevance_max_length
+        self.relevance_batch_size = relevance_batch_size
+        self.r1_scorer = None
 
         self.faiss_manager = FAISSIndexManager(
             index_truncation_config=index_truncation_config,
@@ -81,6 +100,16 @@ class SubclaimScorer(IDocumentScorer):
 
         return self.openai_client
 
+    def _get_r1_scorer(self):
+        """Lazily create the independent NLI scorer used by R1."""
+        if self.r1_scorer is None:
+            self.r1_scorer = R1EvidenceEntailmentScorer(
+                model_id=self.relevance_model,
+                max_length=self.relevance_max_length,
+                batch_size=self.relevance_batch_size,
+            )
+        return self.r1_scorer
+
     def score(
         self,
         claim: str,
@@ -97,17 +126,29 @@ class SubclaimScorer(IDocumentScorer):
 
         agg_func = AGGREGATION_STRATEGIES[aggregation_strategy]()
 
-        if scoring_strategy not in SCORING_STRATEGIES:
+        if scoring_strategy not in SUPPORTED_SCORING_STRATEGIES:
             raise ValueError(
                 f"Unknown scoring strategy: {scoring_strategy}. "
                 f"Supported strategies are: "
-                f"{list(SCORING_STRATEGIES.keys())}"
+                f"{sorted(SUPPORTED_SCORING_STRATEGIES)}"
             )
 
-        scoring_func = SCORING_STRATEGIES[scoring_strategy]()
+        if scoring_strategy == "r1" and aggregation_strategy != "max":
+            raise ValueError(
+                "R1 is defined as max_j E(c | d_j) and therefore requires "
+                "aggregation_strategy='max'."
+            )
 
         if len(retrieved_docs) == 0:
             return 0
+
+        if scoring_strategy == "r1":
+            return self._get_r1_scorer().score(
+                claim=claim,
+                retrieved_docs=retrieved_docs,
+            )
+
+        scoring_func = SCORING_STRATEGIES[scoring_strategy]()
 
         claim_embedding = self.faiss_manager.embedding_provider.embed_query(claim)
 

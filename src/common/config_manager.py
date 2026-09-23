@@ -97,9 +97,10 @@ class ConfigManager:
             "aimal",
         )
 
-        if conformal_implementation not in {"author", "aimal"}:
+        if conformal_implementation not in {"author", "legacy", "aimal"}:
             raise ValueError(
-                "conformal.implementation must be either 'author' or 'aimal'. "
+                "conformal.implementation must be one of "
+                "'author', 'legacy', or 'aimal'. "
                 f"Got {conformal_implementation!r}."
             )
 
@@ -108,6 +109,7 @@ class ConfigManager:
         verifier_config = models_config.get("claim_verifier", {})
         frequency_config = models_config.get("frequency_scorer", {})
         embedding_config = models_config.get("embedding", {})
+        relevance_config = models_config.get("relevance_scorer", {})
 
         generator_model = generator_config.get(
             "name",
@@ -188,6 +190,24 @@ class ConfigManager:
                         self._infer_provider(embedding_model),
                     ),
                     "name": embedding_model,
+                },
+                "relevance_scorer": {
+                    "provider": relevance_config.get(
+                        "provider",
+                        "huggingface",
+                    ),
+                    "name": relevance_config.get(
+                        "name",
+                        "tasksource/deberta-small-long-nli",
+                    ),
+                    "max_length": relevance_config.get(
+                        "max_length",
+                        1664,
+                    ),
+                    "batch_size": relevance_config.get(
+                        "batch_size",
+                        8,
+                    ),
                 },
             },
             "retrieval": {

@@ -149,6 +149,11 @@ def main():
     embedding_model = models_config["embedding"]["name"]
     frequency_provider = models_config["frequency_scorer"]["provider"]
     frequency_model = models_config["frequency_scorer"]["name"]
+    relevance_scorer_config = models_config["relevance_scorer"]
+    relevance_provider = relevance_scorer_config["provider"]
+    relevance_model = relevance_scorer_config["name"]
+    relevance_max_length = relevance_scorer_config["max_length"]
+    relevance_batch_size = relevance_scorer_config["batch_size"]
     index_truncation_config = index_config["truncation_config"]
 
     truncation_strategy = index_truncation_config["strategy"]
@@ -434,6 +439,18 @@ def main():
         "scoring_strategy": conformal_config["scoring_strategy"],
     }
 
+    if conformal_config["scoring_strategy"] == "r1":
+        if relevance_provider != "huggingface":
+            raise ValueError(
+                "R1 currently requires models.relevance_scorer.provider="
+                "'huggingface'. "
+                f"Got {relevance_provider!r}."
+            )
+
+        # R1 cache identity includes every NLI setting that can change the
+        # entailment probabilities. Product/R0 fingerprints remain unchanged.
+        subclaim_cache_config["relevance_scorer"] = relevance_scorer_config
+
     subclaim_fingerprint = ConfigManager.fingerprint(subclaim_cache_config)
 
     logging.info(f"Subclaim configuration fingerprint: {subclaim_fingerprint}")
@@ -551,7 +568,23 @@ def main():
         indice2fm_path=indice2fm_path,
         frequency_provider=frequency_provider,
         embedding_provider=embedding_provider,
+        relevance_model=relevance_model,
+        relevance_max_length=relevance_max_length,
+        relevance_batch_size=relevance_batch_size,
     )
+
+    logging.info(
+        "Using relevance scoring strategy: %s",
+        conformal_config["scoring_strategy"],
+    )
+    if conformal_config["scoring_strategy"] == "r1":
+        logging.info(
+            "Using R1 NLI provider/model: %s/%s (max_length=%d, batch_size=%d)",
+            relevance_provider,
+            relevance_model,
+            relevance_max_length,
+            relevance_batch_size,
+        )
 
     logging.info(
         "Using frequency scoring provider/model: %s/%s",
