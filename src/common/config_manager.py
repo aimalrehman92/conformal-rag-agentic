@@ -6,6 +6,7 @@ import json
 import shutil
 import hashlib
 from pathlib import Path
+from src.calibration.base_calibration import normalize_confidence_methods
 
 
 class ConfigManager:
@@ -354,6 +355,9 @@ class ConfigManager:
                 "scoring_strategy": conformal_config.get(
                     "scoring_strategy",
                     legacy_conformal_config.get("scoring_strategy"),
+                ),
+                "confidence_methods": normalize_confidence_methods(
+                    conformal_config.get("confidence_methods")
                 ),
                 "split_conformal": conformal_config.get(
                     "split_conformal",

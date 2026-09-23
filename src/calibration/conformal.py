@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from src.calibration.base_calibration import ICalibration
+from src.calibration.base_calibration import ICalibration, normalize_confidence_methods
 from src.calibration.utils import compute_threshold
 from src.calibration.utils import append_result_to_csv
 
@@ -21,19 +21,12 @@ class SplitConformalCalibration(ICalibration):
     def __init__(self,
                  dataset_name: str,
                  runs: int = 1000,
-                 seed: int = 42):
+                 seed: int = 42,
+                 confidence_methods=None):
         self.dataset_name = dataset_name
         self.runs = runs
         self.seed = seed
-        self.confidence_method = [
-            "relavance",
-            "frequency",
-            "query_claim_cosine_similarity",
-            "doc_claim_cosine_similarity",
-            "min_log_prob",
-            "random",
-            "ordinal",
-        ]
+        self.confidence_method = normalize_confidence_methods(confidence_methods)
 
     def _split_data(self, data: list, run_index: int):
         """

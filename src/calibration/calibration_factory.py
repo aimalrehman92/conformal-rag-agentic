@@ -42,6 +42,7 @@ def create_split_conformal_calibration(
     dataset_name: str,
     runs: int,
     seed: int,
+    confidence_methods=None,
 ):
     """
     Create the requested split-conformal implementation.
@@ -56,12 +57,14 @@ def create_split_conformal_calibration(
         return AuthorSplitConformalCalibration(
             dataset_name=dataset_name,
             runs=runs,
+            confidence_methods=confidence_methods,
         )
 
     return SplitConformalCalibration(
         dataset_name=dataset_name,
         runs=runs,
         seed=seed,
+        confidence_methods=confidence_methods,
     )
 
 
@@ -71,6 +74,7 @@ def create_group_conditional_calibration(
     result_dir: str,
     runs: int,
     seed: int,
+    confidence_methods=None,
 ):
     """
     Create the requested group-conditional conformal implementation.
@@ -84,6 +88,7 @@ def create_group_conditional_calibration(
             dataset_name=dataset_name,
             result_dir=result_dir,
             runs=runs,
+            confidence_methods=confidence_methods,
         )
 
     return GroupConditionalConformal(
@@ -91,4 +96,5 @@ def create_group_conditional_calibration(
         result_dir=result_dir,
         runs=runs,
         seed=seed,
+        confidence_methods=confidence_methods,
     )

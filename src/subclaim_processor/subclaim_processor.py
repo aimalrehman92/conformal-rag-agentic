@@ -14,6 +14,7 @@ from src.common.llm.llm_factory import (
 from src.subclaim_processor.scorer.base_scorer import IScorer
 from src.subclaim_processor.scorer.document_scorer import IDocumentScorer
 from src.calibration.utils import load_subclaim_data
+from src.calibration.base_calibration import normalize_confidence_methods
 from src.common.retriever import Retriever
 
 VALID_GPT_ANNOTATIONS = {"S", "I", "U", "N"}
@@ -184,7 +185,13 @@ class SubclaimProcessor(IQueryProcessor):
 
         print(f"Completed subclaim extraction. Results saved in {self.subclaims_file}")
 
-    def score_subclaim(self, aggregation_strategy, scoring_strategy):
+    def score_subclaim(
+        self,
+        aggregation_strategy,
+        scoring_strategy,
+        confidence_methods=None,
+    ):
+        selected_methods = set(normalize_confidence_methods(confidence_methods))
 
         with open(self.subclaims_file, "r", encoding="utf-8") as jsonfile:
             subclaims_data = json.load(jsonfile)
@@ -202,7 +209,10 @@ class SubclaimProcessor(IQueryProcessor):
                             )
                             subclaim["scores"]["noise"] = noise_rng.gauss(0, 0.001)
 
-                        if "relavance" not in subclaim["scores"].keys():
+                        if (
+                            "relavance" in selected_methods
+                            and "relavance" not in subclaim["scores"].keys()
+                        ):
                             relavance_score = self.scorer.score(
                                 claim=subclaim["subclaim"],
                                 retrieved_docs=entry["retrieved_docs"],
@@ -211,7 +221,8 @@ class SubclaimProcessor(IQueryProcessor):
                             )
                             subclaim["scores"]["relavance"] = float(relavance_score)
                         if (
-                            "query_claim_cosine_similarity"
+                            "query_claim_cosine_similarity" in selected_methods
+                            and "query_claim_cosine_similarity"
                             not in subclaim["scores"].keys()
                         ):
                             query_claim_cosine_similarity = (
@@ -223,7 +234,8 @@ class SubclaimProcessor(IQueryProcessor):
                                 query_claim_cosine_similarity
                             )
                         if (
-                            "doc_claim_cosine_similarity"
+                            "doc_claim_cosine_similarity" in selected_methods
+                            and "doc_claim_cosine_similarity"
                             not in subclaim["scores"].keys()
                         ):
                             doc_claim_cosine_similarities = []
@@ -238,7 +250,10 @@ class SubclaimProcessor(IQueryProcessor):
                                 if doc_claim_cosine_similarities
                                 else 0
                             )
-                        if "frequency" not in subclaim["scores"].keys():
+                        if (
+                            "frequency" in selected_methods
+                            and "frequency" not in subclaim["scores"].keys()
+                        ):
                             frequency_score = self.scorer.frequency_score(
                                 response_agent=self.response_agent,
                                 question=entry["query"],
@@ -249,7 +264,10 @@ class SubclaimProcessor(IQueryProcessor):
                             )
                             subclaim["scores"]["frequency"] = float(frequency_score)
 
-                        if "random" not in subclaim["scores"].keys():
+                        if (
+                            "random" in selected_methods
+                            and "random" not in subclaim["scores"].keys()
+                        ):
                             random_rng = _make_stable_rng(
                                 seed=self.seed,
                                 query=entry["query"],
@@ -259,14 +277,18 @@ class SubclaimProcessor(IQueryProcessor):
                             )
                             subclaim["scores"]["random"] = random_rng.random()
 
-                        if "ordinal" not in subclaim["scores"].keys():
+                        if (
+                            "ordinal" in selected_methods
+                            and "ordinal" not in subclaim["scores"].keys()
+                        ):
                             subclaim["scores"]["ordinal"] = (
                                 (i / len(entry["subclaims"]))
                                 if len(entry["subclaims"]) > 0
                                 else 0
                             )
                         if (
-                            "min_log_prob" not in subclaim["scores"].keys()
+                            "min_log_prob" in selected_methods
+                            and "min_log_prob" not in subclaim["scores"].keys()
                             and "log_prob" in subclaim["scores"].keys()
                         ):
                             subclaim["scores"]["min_log_prob"] = min(
@@ -388,22 +410,14 @@ def process_subclaims(
     conformal_config = config["conformal"]
     aggregation_strategy = conformal_config["aggregation_strategy"]
     scoring_strategy = conformal_config["scoring_strategy"]
+    confidence_methods = conformal_config["confidence_methods"]
 
     # Check if the file exists and load it if it does
     data = None
     if os.path.exists(subclaims_path):
         data = load_subclaim_data(subclaims_path)
         # Check if the data is valid
-        score_method_to_check = [
-            "noise",
-            "relavance",
-            "frequency",
-            "query_claim_cosine_similarity",
-            "doc_claim_cosine_similarity",
-            "random",
-            "ordinal",
-            "min_log_prob",
-        ]
+        score_method_to_check = ["noise", *confidence_methods]
         if data:
             needs_subclaim = any(len(pt["subclaims"]) == 0 for pt in data)
 
@@ -462,7 +476,9 @@ def process_subclaims(
         )
         processor.get_subclaims_from_responses()
         processor.score_subclaim(
-            aggregation_strategy=aggregation_strategy, scoring_strategy=scoring_strategy
+            aggregation_strategy=aggregation_strategy,
+            scoring_strategy=scoring_strategy,
+            confidence_methods=confidence_methods,
         )
         processor.annotate_subclaim()
     else:
@@ -473,6 +489,7 @@ def process_subclaims(
             processor.score_subclaim(
                 aggregation_strategy=aggregation_strategy,
                 scoring_strategy=scoring_strategy,
+                confidence_methods=confidence_methods,
             )
         if needs_annotation:
             processor.annotate_subclaim()

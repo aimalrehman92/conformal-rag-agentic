@@ -21,9 +21,10 @@ class GroupConditionalConformal(SplitConformalCalibration):
             dataset_name: str,
             result_dir: str,
             runs: int = 1000,
-            seed: int = 42
+            seed: int = 42,
+            confidence_methods=None,
             ):
-        super().__init__(dataset_name, runs, seed)
+        super().__init__(dataset_name, runs, seed, confidence_methods)
         self.result_dir = result_dir
 
     def _split_group_data(

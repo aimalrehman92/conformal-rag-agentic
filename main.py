@@ -437,6 +437,7 @@ def main():
             "frequency_scorer": models_config["frequency_scorer"],
         },
         "scoring_strategy": conformal_config["scoring_strategy"],
+        "confidence_methods": conformal_config["confidence_methods"],
     }
 
     if conformal_config["scoring_strategy"] == "r1":
@@ -613,6 +614,7 @@ def main():
             dataset_name=dataset_name,
             runs=runs,
             seed=seed,
+            confidence_methods=conformal_config["confidence_methods"],
         )
 
         logging.info(
@@ -646,6 +648,7 @@ def main():
             result_dir=conformal_result_dir,
             runs=runs,
             seed=seed,
+            confidence_methods=conformal_config["confidence_methods"],
         )
         logging.info(
             f"Plotting conformal removal with alphas: {conformal_alphas}, a={a_value}"

@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from src.calibration.author_utils import append_result_to_csv
 from src.calibration.author_utils import compute_threshold
-from src.calibration.base_calibration import ICalibration
+from src.calibration.base_calibration import ICalibration, normalize_confidence_methods
 
 CORRECT_ANNOTATIONS = ["S"]
 
@@ -26,17 +26,14 @@ class AuthorSplitConformalCalibration(ICalibration):
     Faithful preservation of the public repository's split conformal behavior.
     """
 
-    def __init__(self, dataset_name: str, runs: int = 1000):
+    def __init__(
+        self,
+        dataset_name: str,
+        runs: int = 1000,
+        confidence_methods=None,
+    ):
         self.dataset_name = dataset_name
-        self.confidence_method = [
-            "relavance",
-            "frequency",
-            "query_claim_cosine_similarity",
-            "doc_claim_cosine_similarity",
-            "min_log_prob",
-            "random",
-            "ordinal",
-        ]
+        self.confidence_method = normalize_confidence_methods(confidence_methods)
         self.runs = runs
 
     def plot_conformal_removal(

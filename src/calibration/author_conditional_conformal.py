@@ -16,8 +16,14 @@ CORRECT_ANNOTATIONS = ["S"]
 
 
 class AuthorGroupConditionalConformal(AuthorSplitConformalCalibration):
-    def __init__(self, dataset_name: str, result_dir: str, runs: int = 1000):
-        super().__init__(dataset_name, runs)
+    def __init__(
+        self,
+        dataset_name: str,
+        result_dir: str,
+        runs: int = 1000,
+        confidence_methods=None,
+    ):
+        super().__init__(dataset_name, runs, confidence_methods)
         self.result_dir = result_dir
 
     def compute_conformal_results(
